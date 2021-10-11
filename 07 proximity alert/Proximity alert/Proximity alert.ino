@@ -27,26 +27,22 @@
 #define DEBUG_DELAY 500               // delay between debug messages in milliseconds
 
 // Melody buzzer functionality encapsulated
-class Buzzer
-{
+class Buzzer {
   unsigned long timeOff;              // time when buzzer should stop
   unsigned int freq;                  // initial frequency
   uint8_t pin;                        // buzzer pin
 
 public:
-  void init(uint8_t pin)              // initialize buzzer variables
-  {
+  void init(uint8_t pin) {             // initialize buzzer variables
     this->pin = pin;
     stop();
   }
 
-  bool buzzing()                      // returns true if buzzer is on
-  {
+  bool buzzing() {                     // returns true if buzzer is on
     return timeOff > 0;
   }
 
-  void run()                          // should be called from loop on every iteration
-  {
+  void run() {                        // should be called from loop on every iteration
     long timeLeft = timeOff - millis();
     if(!timeOff || timeLeft < 0)
       stop();
@@ -59,8 +55,7 @@ public:
     }
   }
 
-  void buzz(unsigned int freq)      // starts buzzer
-  {
+  void buzz(unsigned int freq) {    // starts buzzer
     if(buzzing())
       return;
     this->freq = freq;              // remember initial frequency
@@ -70,8 +65,7 @@ public:
       stop();                                 // if frequency given is wrong, do not start
   }
 
-  void stop()                      // stop buzzing
-  {
+  void stop() {                      // stop buzzing
     timeOff = 0;
     noTone(pin);
   }
@@ -119,7 +113,6 @@ double getDistance() {
 }
 
 void loop() {
-
   if(digitalRead(BUTTON_PIN) == LOW)  // Check if shutdown button is pressed and shut down the alarm
     if(buzzer.buzzing())              // but only if buzzer is working
       shutDownAlert = true;
@@ -136,8 +129,10 @@ void loop() {
       map(distance, DISTANCE_ALERTED_CRITICAL, DISTANCE_ALERTED_MAX, 0, LEDS_COUNT) :
       0;
   }
-  else
-    shutDownAlert = false;    // Alert switch off button will automatically reset when distance is larger than max alerted
+
+  // Alert switch off button will automatically reset when distance is larger than critical (or max alerted)
+  if(distance > DISTANCE_ALERTED_CRITICAL)
+    shutDownAlert = false;    
 
   // Switch the LEDs on and off
   for(auto i = 0; i < LEDS_COUNT; i++)
@@ -149,7 +144,7 @@ void loop() {
     else
       buzzer.buzz(INITIAL_BUZZER_FREQ);     // make the noize
 
-  buzzer.run(); // process current buzzer state on every loop iteration
+  buzzer.run();                             // process current buzzer state on every loop iteration
 
   #ifdef DEBUG
     if(millis() > debugTime)
