@@ -1,32 +1,35 @@
-#define LED_R 3
-#define LED_G 5
-#define LED_B 6
+#define LED_R 5
+#define LED_G 
+#define LED_B
 
-//#define BUTTON      
-#define ROTARY_SW   4
-#define ROTARY_DT   7
-#define ROTARY_CLK  8
+#define CHANNEL_R 0
+#define CHANNEL_G 1
+#define CHANNEL_B 2
 
-#define BUTTON_R 9
-#define BUTTON_G 10
-#define BUTTON_B 11
-#define BUTTON_N 12
+#define BUTTON      4
+#define ROTARY_SW   18
+#define ROTARY_DT   19
+#define ROTARY_CLK  21
+
 
 void setup() {
+  //pinMode (LED_R, ANALOG);
 
-  pinMode(LED_R, OUTPUT);
-  pinMode(LED_G, OUTPUT);
-  pinMode(LED_B, OUTPUT);
+  //setup PWM -- ESP32
+  ledcAttachPin(LED_R, CHANNEL_R);
+  //ledcAttachPin(LED_G, CHANNEL_G);
+  //ledcAttachPin(LED_B, CHANNEL_B);
 
-  pinMode (BUTTON_R, INPUT_PULLUP);
-  pinMode (BUTTON_G, INPUT_PULLUP);
-  pinMode (BUTTON_B, INPUT_PULLUP);
-  pinMode (BUTTON_N, INPUT_PULLUP);
+  //ledcSetup(CHANNEL_R, 1000, 8);
+  //ledcSetup(CHANNEL_G, 1000, 8);
+  //ledcSetup(CHANNEL_B, 1000, 8);
+  
+  pinMode (BUTTON, INPUT_PULLUP);
 
   pinMode(ROTARY_CLK, INPUT);
   pinMode(ROTARY_DT, INPUT);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.flush();
   Serial.println("Hello!");
 }
@@ -34,9 +37,7 @@ void setup() {
 int iCounter = 0;
 bool justPressed = false;
 
-byte red = 254;
-byte green = 254;
-byte blue = 254;
+byte red = 255;
 
 inline void noop()
 {
@@ -80,14 +81,11 @@ void loop() {
     if(red < 1) red = 1;
     if(red > 254) red = 254;
   
+    ledcWrite(0, red + 1);
   }
 
-  analogWrite(LED_R, red + 1);
-  analogWrite(LED_G, green + 1);
-  analogWrite(LED_B, blue + 1);
 
-
-  if(digitalRead(BUTTON_N) == 0)
+  if(digitalRead(BUTTON) == 0)
   {
     if(!justPressed)
     {
