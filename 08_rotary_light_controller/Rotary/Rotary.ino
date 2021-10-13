@@ -48,8 +48,6 @@
 
 #define COLOR_STEP 10 // step to encrease or decrease color on every click
 
-//#define DEBUG 1
-
 void setup() {
 
   //RGB LED pins
@@ -98,8 +96,7 @@ int dt = 0;
 //     0 if no direction detected
 //    -1 for counter-clockwise direction
 //    +1 for clockwise direction
-inline short int getDirection()
-{
+inline short int getDirection() {
   short int ret = 0;
   //Copy-paste from Moodle:
   int newCLK = digitalRead(ROTARY_CLK);
@@ -108,13 +105,6 @@ inline short int getDirection()
   for (int i=0; i < 1600; i++) asm volatile ("NOP");  // switch debounce
 
   if ( (newCLK != clk) && newCLK == LOW ) {           // CLK has changed from HIGH to LOW
-
-    #ifdef DEBUG
-      Serial.print(newCLK);
-      Serial.print(" ");
-      Serial.println(newDT);
-    #endif
-
     if ( dt == LOW)
       ret = -1;
     else
@@ -143,14 +133,21 @@ inline void printHex(int h)
   Serial.print(h, HEX);  
 }
 
+int oldR = -1, oldG = -1, oldB = -1;
+
 // Print out current color (global red, green, blue in hex format)
 inline void printColor()
 {
+  if((oldR == red) && (oldG == green) && (oldB == blue))
+    return;
   Serial.print("Color: #");
   printHex(red);
   printHex(green);
   printHex(blue);
   Serial.println("");
+  oldR = red;
+  oldG = green;
+  oldB = blue;
 }
 
 // Set RGB LED pins
@@ -166,15 +163,23 @@ inline void setRGBLed(byte r, byte g, byte b)
 void loop() {
   // Check color switch buttons
   // When button is pressed, correspondent color will be referenced by our color pointer
-  if(digitalRead(BUTTON_R) == LOW)    color = & red;
-  if(digitalRead(BUTTON_G) == LOW)    color = & green;
-  if(digitalRead(BUTTON_B) == LOW)    color = & blue;
+  if(digitalRead(BUTTON_R) == LOW)
+    color = & red;
+  if(digitalRead(BUTTON_G) == LOW)
+    color = & green;
+  if(digitalRead(BUTTON_B) == LOW)
+    color = & blue;
 
   // If off button is pressed, reset colors
-  if(digitalRead(BUTTON_OFF) == LOW)  resetColors();
+  if(digitalRead(BUTTON_OFF) == LOW)
+  {
+    resetColors();
+    printColor();                             // Also output the changed color
+  }
 
   // If rotary encoder shaft is pressed, then reset current color pointer
-  if(digitalRead(ROTARY_SW) == LOW)   color = nullptr;
+  if(digitalRead(ROTARY_SW) == LOW)
+    color = nullptr;
 
   // Receive rotation direction from rotary encoder
   //  0 - no rotation
@@ -182,21 +187,11 @@ void loop() {
   //  1 - clockwise
   int dir = getDirection();
 
-  if(dir != 0) {                              // If rotation is detected (possible direction is -1 or +1)
-    #ifdef DEBUG
-      Serial.print("dir: ");
-      Serial.println(dir);
-      if(dir == 1)
-        Serial.println(" + ");
-      if(dir == -1)
-        Serial.println(" - ");
-    #endif
-  
+  if(dir != 0) {                              // If rotation is detected (possible direction is -1 or +1)  
     if(color != nullptr) {                    // And if color to change selected (pointer is not NULL)
       *color = *color + dir * COLOR_STEP;     // Increase or decrease it
       if(*color < 0) *color = 0;              // Brightness can't be below zero
       if(*color > 255) *color = 255;          // Brightness can't be above 255
-
       printColor();                           // If color was changed, output new color
     }
   }
