@@ -73,8 +73,6 @@ void setup() {
   Serial.begin(9600);
   Serial.flush();
 
-  //Output initial color (rgb = #000000)
-  printColor();
 }
 
 //RGB values
@@ -133,31 +131,37 @@ inline void printHex(int h)
   Serial.print(h, HEX);  
 }
 
-int oldR = -1, oldG = -1, oldB = -1;
 
 // Print out current color (global red, green, blue in hex format)
 inline void printColor()
 {
-  if((oldR == red) && (oldG == green) && (oldB == blue))
-    return;
   Serial.print("Color: #");
   printHex(red);
   printHex(green);
   printHex(blue);
   Serial.println("");
-  oldR = red;
-  oldG = green;
-  oldB = blue;
 }
+
+// Variables to remember colors' previous values
+// We initialize it with impossible values to "automatically" set default colors (0, 0, 0) at first iteration
+int oldR = -1, oldG = -1, oldB = -1;
 
 // Set RGB LED pins
 // I have common anode LED, so sending 255 to pin means no light (no voltage between anode and color), 
 // 0 means brightest light
 inline void setRGBLed(byte r, byte g, byte b)
 {
+  if((oldR == r) && (oldG == g) && (oldB == b)) // Any digital write will be done only if something was changed
+    return;
+
   analogWrite(LED_R, 255 - r);
   analogWrite(LED_G, 255 - g);
   analogWrite(LED_B, 255 - b);
+  printColor();
+
+  oldR = red;
+  oldG = green;
+  oldB = blue;
 }
 
 void loop() {
@@ -172,10 +176,7 @@ void loop() {
 
   // If off button is pressed, reset colors
   if(digitalRead(BUTTON_OFF) == LOW)
-  {
     resetColors();
-    printColor();                             // Also output the changed color
-  }
 
   // If rotary encoder shaft is pressed, then reset current color pointer
   if(digitalRead(ROTARY_SW) == LOW)
@@ -192,7 +193,6 @@ void loop() {
       *color = *color + dir * COLOR_STEP;     // Increase or decrease it
       if(*color < 0) *color = 0;              // Brightness can't be below zero
       if(*color > 255) *color = 255;          // Brightness can't be above 255
-      printColor();                           // If color was changed, output new color
     }
   }
 
