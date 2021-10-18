@@ -38,7 +38,7 @@ void loop() {
   {
     digitalWrite(BTN1, HIGH);
     digitalWrite(BTN2, HIGH);
-    delay(1000);
+    delay(2000);
     digitalWrite(BTN1, LOW);
     digitalWrite(BTN2, LOW);
     delay(100);
