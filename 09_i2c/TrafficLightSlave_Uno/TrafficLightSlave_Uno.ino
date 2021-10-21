@@ -1,6 +1,21 @@
+/* 
+  We will agree on enumerating the different states that the traffic light can have, as follows:
+    1. Red
+    2. Red-Yellow
+    3. Green
+    4. Yellow
+
+  So internally we use patterns numbers 0 .. 3,
+  But we will transmit numbers 1 to 4 to meet requirements.
+
+  Network protocol is very simple:
+  Master send to slave one byte with current pattern number (1 .. 4)
+  When master requests the data from slave, slave will return one byte with current pattern number (1 .. 4)
+*/
+
 #include <Wire.h>
 
-#define SLAVE_ID 11
+#define SLAVE_ID 11       // Only difference in code is slave id
 #define LED_RED 2
 #define LED_YELLOW 3
 #define LED_GREEN 4
@@ -18,11 +33,14 @@ const uint8_t patterns[] = {
   0b010,  //YELLOW
 };
 
-uint8_t currentPattern;
+uint8_t currentPatternIndex;
+
+bool greenRequested = false;
 
 void requestEvent() {
-  Wire.write(currentPattern + 1);
+  Wire.write(currentPatternIndex + 1);
 }
+
 
 // from here https://www.arduino.cc/en/Tutorial/LibraryExamples/MasterWriter
 void receiveEvent(int howMany)
@@ -39,8 +57,8 @@ void receiveEvent(int howMany)
 
 void setPattern(uint8_t ptrn)
 {
-  currentPattern = ptrn;
-  uint8_t pattern = patterns[currentPattern];
+  currentPatternIndex = ptrn;
+  uint8_t pattern = patterns[currentPatternIndex];
 
   #ifdef DEBUG
     Serial.print("pattern: ");
@@ -75,12 +93,11 @@ void setup() {
   for(auto i : leds)
     pinMode(i, OUTPUT);
 
-  currentPattern = 0;
+  currentPatternIndex = 0;
 
   #ifdef DEBUG
     Serial.begin(9600);
   #endif
-
 }
 
 void loop() {
