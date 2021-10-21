@@ -1,6 +1,6 @@
 #include <Wire.h>
 
-#define SLAVE_ID 10
+#define SLAVE_ID 11
 #define LED_RED 2
 #define LED_YELLOW 3
 #define LED_GREEN 4
@@ -21,7 +21,7 @@ const uint8_t patterns[] = {
 uint8_t currentPattern;
 
 void requestEvent() {
-  Wire.write(currentPattern);
+  Wire.write(currentPattern + 1);
 }
 
 // from here https://www.arduino.cc/en/Tutorial/LibraryExamples/MasterWriter
@@ -33,10 +33,8 @@ void receiveEvent(int howMany)
   while(0 < Wire.available())     // loop through all
   {
     uint8_t p = Wire.read();         // receive byte as a uint8_t
-    //Serial.print(p);                 // print the pattern received
     setPattern(p - 1);               // set the pattern
   }
-  //Serial.println("'");
 }
 
 void setPattern(uint8_t ptrn)
