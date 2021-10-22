@@ -1,9 +1,9 @@
-#include <Wire.h>
-
-#define SWITCH_DELAY 2000
-#define SLAVE_POLL_DELAY 100
-
 /* 
+/*
+ * INF471C - Connected Objects and the Internet of Things (IoT)
+ * Arduino basics - I2C traffic light system : controller
+ * Ilja Tihhanovski
+
   We will agree on enumerating the different states that the traffic light can have, as follows:
     1. Red
     2. Red-Yellow
@@ -15,8 +15,33 @@
 
   Network protocol is very simple:
   Master send to slave one byte with current pattern number (1 .. 4)
-  When master requests the data from slave, slave will return one byte with current pattern number (1 .. 4)
+  When master requests the data from slave, slave will return one byte containing
+  current pattern number (1 .. 4) and status of green light requested ("pedestrian button" is pressed)
+
+  Data packet consists of one byte with next bits (from lowest):
+
+  #0 - current pattern number
+  #1 - current pattern number
+  #2 - current pattern number
+  #3 - 1 if green light is requested
+  bits #4 .. #7 are not used
+
+  For example:
+
+  0b0001 = red light, no green requested (e.g. decimal 1)
+  0b0010 = red and yellow light, no green requested (decimal 2)
+  0b1001 = red and green requested (decimal 1 & binary 1000)
+
+  0b1100 = yellow light and green is requested - logically impossible cause green could be requested only when red light is on
+
+  Master send to slave only 3 bits (green request bit is aways 0)
+
 */
+
+#include <Wire.h>
+
+#define SWITCH_DELAY 2000       // Switch patterns every 2 seconds
+#define SLAVE_POLL_DELAY 100    // Update slaves state every 0.1 seconds
 
 // Here we save current pattern of first slave between iterations
 // Second light's pattern is two steps ahead (eg Red -> Green)
@@ -30,9 +55,11 @@ bool greenRequested[2] = {false, false};
 
 void setup() 
 {
+  //Start I2C as master
   Wire.begin();
   Serial.begin(9600);
 
+  //Initialize current pattern and timers to be changed on first loop iteration
   currentPattern = -1;
   patternChangeTimer = 0;
   slavePollTimer = 0;
@@ -43,7 +70,7 @@ int patterns[2] = {0, 0};           // Here we will save patterns retrieved to c
 void pollSlaves()
 {
   // Retrieve patterns from slaves
-  if(millis() > slavePollTimer)
+  if(millis() > slavePollTimer) // Only when time is come
   {
     uint8_t i = 0;
     for(int slaveId : slaves)
@@ -91,7 +118,7 @@ void pollSlaves()
       Serial.println(patterns[0]);
     }
 
-    slavePollTimer = millis() + SLAVE_POLL_DELAY;
+    slavePollTimer = millis() + SLAVE_POLL_DELAY;  // Set new timer
   }
 }
 
@@ -99,6 +126,7 @@ void loop() {
 
   pollSlaves();
 
+  //If green was requested by somebody, cut the timer
   for(auto i = 0; i < 2; i++)
     if(greenRequested[i])
     {
@@ -124,10 +152,7 @@ void loop() {
       Wire.endTransmission();               // Disconnect
       p = (p + 2) % 4;                      // Shift pattern for next slave
     }
-
-    patternChangeTimer = millis() + SWITCH_DELAY;
-    //delay(DELAY);                                  // Wait for 2 seconds
-    Serial.println("-------");
+    patternChangeTimer = millis() + SWITCH_DELAY; // Now wait for 2 seconds before next switch
   }
 
 }
