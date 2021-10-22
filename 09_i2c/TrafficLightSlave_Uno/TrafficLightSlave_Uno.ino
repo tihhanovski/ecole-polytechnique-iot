@@ -16,42 +16,62 @@
 #include <Wire.h>
 
 #define SLAVE_ID 11       // Only difference in code is slave id
-#define LED_RED 2
-#define LED_YELLOW 3
-#define LED_GREEN 4
+#define LED_RED 3
+#define LED_YELLOW 4
+#define LED_GREEN 5
 
-#define DEBUG 1
+#define BUTTON 6
+
+//#define DEBUG 1
 
 const uint8_t leds[] = {LED_RED, LED_YELLOW, LED_GREEN};
 
 // Pattern is: GYR, every bit means correspondent light on or off
 // For example 0b001 means Green Off, Yellow Off, Red On
 const uint8_t patterns[] = {
-  0b001,  //RED
-  0b011,  //RED YELLOW 
-  0b100,  //GREEN
-  0b010,  //YELLOW
+  0b001,  //RED index 0
+  0b011,  //RED YELLOW index 1
+  0b100,  //GREEN index 2
+  0b010,  //YELLOW index 3
 };
 
 uint8_t currentPatternIndex;
 
 bool greenRequested = false;
+bool greenRequestSent = false;
 
 void requestEvent() {
-  Wire.write(currentPatternIndex + 1);
+  uint8_t patternIndexToWrite = currentPatternIndex + 1;
+  uint8_t packet = patternIndexToWrite
+    | (greenRequested && !greenRequestSent ? 0b1111 : 0b0111);
+  Wire.write(packet);
+  #ifdef DEBUG
+    Serial.print("#");
+    Serial.print(SLAVE_ID);
+    Serial.print(": Master requested data: sending ");
+    Serial.println(packet, BIN);
+  #endif
+  #ifndef DEBUG
+    Serial.print(".");
+  #endif
+  if(greenRequested && !greenRequestSent)
+    Serial.println("Green request sent");
+  greenRequestSent = true;
 }
 
 
 // from here https://www.arduino.cc/en/Tutorial/LibraryExamples/MasterWriter
 void receiveEvent(int howMany)
 {
-  Serial.print("receiveEvent(");
-  Serial.print(howMany);
-  Serial.println("):");
-  while(0 < Wire.available())     // loop through all
+  #ifdef DEBUG
+    Serial.print("receiveEvent(");
+    Serial.print(howMany);
+    Serial.println("):");
+  #endif
+  while(0 < Wire.available())             // loop through all
   {
-    uint8_t p = Wire.read();         // receive byte as a uint8_t
-    setPattern(p - 1);               // set the pattern
+    uint8_t packet = Wire.read();         // receive byte as a uint8_t
+    setPattern(packet - 1);               // set the pattern
   }
 }
 
@@ -59,6 +79,13 @@ void setPattern(uint8_t ptrn)
 {
   currentPatternIndex = ptrn;
   uint8_t pattern = patterns[currentPatternIndex];
+
+  if((currentPatternIndex == 2) && greenRequested)
+  {
+    greenRequested = false;
+    greenRequestSent = false;
+    Serial.println("Green granted");
+  }
 
   #ifdef DEBUG
     Serial.print("pattern: ");
@@ -78,9 +105,7 @@ void setPattern(uint8_t ptrn)
     pattern = pattern >> 1;
   }
 
-  #ifdef DEBUG
-    Serial.println("");
-  #endif
+  Serial.println("");
 }
 
 void setup() {
@@ -93,13 +118,24 @@ void setup() {
   for(auto i : leds)
     pinMode(i, OUTPUT);
 
+  pinMode(BUTTON, INPUT_PULLUP);
+
   currentPatternIndex = 0;
 
-  #ifdef DEBUG
-    Serial.begin(9600);
-  #endif
+  Serial.begin(9600);
 }
 
 void loop() {
-  delay(200);
+  if(digitalRead(BUTTON) == LOW)
+  {
+    //Serial.println("*************");
+    if(currentPatternIndex == 0)
+      if(!greenRequested)
+      {
+        greenRequested = true;
+        greenRequestSent = false;
+        Serial.println("Green requested");
+      }
+    delay(50);
+  }
 }
