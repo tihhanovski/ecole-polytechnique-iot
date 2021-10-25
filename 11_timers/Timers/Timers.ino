@@ -1,50 +1,56 @@
 #define MAXSCALE 4
 #define BUTTON 2
 #define LED 9
+#define SCALE_LOWEST 15624    // Lowest rate : 1 Hz
+#define SCALE_HIGHEST 3906    // Hightest rate : 4 Hz
 
 volatile unsigned long counter = 0;
 volatile unsigned long counterTotal = 0;
-volatile uint8_t scale = 4;
+volatile unsigned int scale = SCALE_HIGHEST;
 
+// Code to be executed on button interrupt
 void switchTimer()
 {
-  scale = scale << 1;
-  if(scale > 4)
-    scale = 1;
+  scale = scale >> 1;         // modify the scale
+  if(scale < SCALE_HIGHEST)   // if rate is too high
+    scale = SCALE_LOWEST;     // then set scale to default
 
-  OCR1A = 15624 / scale;      // установка регистра совпадения
-  TCNT1 = 0;
-  counter = 0;
+  OCR1A = scale;              // scale the register
+  TCNT1 = 0;                  // set internal timer counter 1 to zero
+  counter = 0;                // reset our counter
 }
 
 
 void setup() {
-  // put your setup code here, to run once:
-  noInterrupts(); //stop interrupts while configuring
-
-  TCCR1A = 0; // установить регистры в 0
+  noInterrupts();             //stop interrupts while configuring
+  TCCR1A = 0;                 // reset timer1 setup registers
   TCCR1B = 0; 
 
-  switchTimer();  
-  TCCR1B |= (1 << WGM12); // включение в CTC режим
+  switchTimer();              // part of the setup code is there just to reuse code
+  TCCR1B |= (1 << WGM12);     // enable CTC mode
 
-  // Установка битов CS10 и CS12 на коэффициент деления 1024
+  // set scale to 1 / 1024
   TCCR1B |= (1 << CS10);
   TCCR1B |= (1 << CS12);
 
-  TIMSK1 |= (1 << OCIE1A);  // включение прерываний по совпадению
+  TIMSK1 |= (1 << OCIE1A);    // setup interrupt on timer compare
 
-  interrupts(); //allow interrupts again
+  interrupts();               //allow interrupts again
 
+  // Setup button interrupt
   attachInterrupt(digitalPinToInterrupt(BUTTON), switchTimer, FALLING );
 
+  // Pin modes
   pinMode(BUTTON, INPUT_PULLUP);
   pinMode(LED, OUTPUT);
 
+  // Start serial
   Serial.begin(9600);
   while(!Serial){}
 }
 
+// Timer interrupt
+// Just increase counters and blink the led
 ISR(TIMER1_COMPA_vect)
 {
   counter++;
@@ -53,6 +59,7 @@ ISR(TIMER1_COMPA_vect)
 }
 
 void loop() {
+  // Output data with some frequency (about once every second)
   Serial.print("scale: ");
   Serial.print(scale);
   Serial.print("\tcounter: ");
