@@ -1,3 +1,10 @@
+/*
+
+    
+
+*/
+
+
 #define BUTTON_ON 2
 #define BUTTON_OFF 3
 #define LED 13
@@ -7,13 +14,15 @@
 volatile bool lightsOn;
 
 void setup() {
-  //SLEEP_MODE_PWR_DOWN
-  //SLEEP_MODE_STANDBY
-  //SLEEP_MODE_EXT_STANDBY
-  //SLEEP_MODE_PWR_SAVE
-  //SLEEP_MODE_ADC
-  //SLEEP_MODE_IDLE - not sleeping at all
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  //Sleep mode                              LED on (mA)     LED off (mA)
+  //SLEEP_MODE_PWR_DOWN                     33.3            24.2
+  //SLEEP_MODE_STANDBY                      33.7            24.5
+  //SLEEP_MODE_EXT_STANDBY                  34.2            25.1
+  //SLEEP_MODE_PWR_SAVE                     34.3            25.1
+  //SLEEP_MODE_ADC                          38.4            29.2
+  //SLEEP_MODE_IDLE - not sleeping at all   46.4            36.8
+  // Currents measured with UNI-T UT132C multimeter
+  set_sleep_mode(SLEEP_MODE_IDLE);
   pinMode(BUTTON_ON, INPUT_PULLUP);
   pinMode(BUTTON_OFF, INPUT_PULLUP);
   pinMode(LED, OUTPUT);
