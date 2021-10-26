@@ -22,7 +22,7 @@ void setup() {
   //SLEEP_MODE_ADC                          38.4            29.2
   //SLEEP_MODE_IDLE - not sleeping at all   46.4            36.8
   // Currents measured with UNI-T UT132C multimeter
-  set_sleep_mode(SLEEP_MODE_IDLE);
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   pinMode(BUTTON_ON, INPUT_PULLUP);
   pinMode(BUTTON_OFF, INPUT_PULLUP);
   pinMode(LED, OUTPUT);
