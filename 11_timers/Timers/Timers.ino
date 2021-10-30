@@ -16,9 +16,9 @@ volatile unsigned int scale = SCALE_HIGHEST;  // Current scale
 // Code to be executed on button interrupt
 void switchTimer()
 {
-  scale = scale >> 1;         // modify the scale
-  if(scale < SCALE_HIGHEST)   // if rate is too high
-    scale = SCALE_LOWEST;     // then set scale to default
+  scale = scale >> 1;         // modify the scale by dividing it by 2
+  if(scale < SCALE_HIGHEST)   // if rate is too high (scale is too low)
+    scale = SCALE_LOWEST;     // then reset scale to default value
 
   OCR1A = scale;              // scale the register
   TCNT1 = 0;                  // set internal timer counter 1 to zero
