@@ -1,12 +1,17 @@
-#define MAXSCALE 4
+/*
+ * INF471C - Connected Objects and the Internet of Things (IoT)
+ * Timers
+ * Ilja Tihhanovski
+ */
+ 
 #define BUTTON 2
 #define LED 9
 #define SCALE_LOWEST 15624    // Lowest rate : 1 Hz
 #define SCALE_HIGHEST 3906    // Hightest rate : 4 Hz
 
-volatile unsigned long counter = 0;
-volatile unsigned long counterTotal = 0;
-volatile unsigned int scale = SCALE_HIGHEST;
+volatile unsigned long counter = 0;           // Counter from last button press
+volatile unsigned long counterTotal = 0;      // Counter from the last boot
+volatile unsigned int scale = SCALE_HIGHEST;  // Current scale
 
 // Code to be executed on button interrupt
 void switchTimer()
@@ -38,7 +43,8 @@ void setup() {
   interrupts();               //allow interrupts again
 
   // Setup button interrupt
-  attachInterrupt(digitalPinToInterrupt(BUTTON), switchTimer, FALLING );
+  attachInterrupt(digitalPinToInterrupt(BUTTON), switchTimer, FALLING);
+  //We can use registers for that -- see "watchdog for safety" code
 
   // Pin modes
   pinMode(BUTTON, INPUT_PULLUP);
@@ -60,6 +66,7 @@ ISR(TIMER1_COMPA_vect)
 
 void loop() {
   // Output data with some frequency (about once every second)
+  // Very basic code - but we can see how interrupts really _interrupt_ out code :)
   Serial.print("scale: ");
   Serial.print(scale);
   Serial.print("\tcounter: ");
