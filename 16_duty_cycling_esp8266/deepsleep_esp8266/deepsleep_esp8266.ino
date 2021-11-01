@@ -1,4 +1,7 @@
 /*
+ * INF471C - Connected Objects and the Internet of Things (IoT)
+ * Duty-cycling and deep sleep in ESP8266
+ * Ilja Tihhanovski
 
   Current draw:
     With deep sleep:
@@ -9,20 +12,22 @@
       blinking: 26.5mA
 */
 
-#define WITH_SLEEPS
-#define LED 5 // 5 is D1
-#define BLINK_CYCLES 5
-#define SLEEP_TIME 5e6
-#define BLINK_DELAY 100
+#define WITH_SLEEPS             // I wrote two versions of code (with or without sleepmode) to compare power consumption
+#define LED 5 // 5 is D1        
+#define BLINK_CYCLES 5          // How many times to blink
+#define SLEEP_TIME 5e6          // How long should ESP8266 sleep (in microseconds)
+#define BLINK_DELAY 100         // Delay between blinks (in milliseconds)
 #define MESSAGE "I am awake!"
 
 #ifdef WITH_SLEEPS
 
 void setup() {
-  pinMode(LED, OUTPUT);
+  pinMode(LED, OUTPUT);         
   Serial.begin(9600);
-  Serial.println(MESSAGE);
 
+  Serial.println(MESSAGE);      // Output message
+
+  // Blink
   for(auto i = 0; i < BLINK_CYCLES; i++)
   {
     digitalWrite(LED, HIGH);
@@ -30,13 +35,16 @@ void setup() {
     digitalWrite(LED, LOW);
     delay(BLINK_DELAY);
   }
+
+  // Go to sleep
   ESP.deepSleep(SLEEP_TIME);
 }
 
-void loop() {}
+void loop() {}  // Nothing to loop here
 
 #endif
 
+//======================= just to compare - code without sleep ===============
 #ifndef WITH_SLEEPS
 
 void setup() {
