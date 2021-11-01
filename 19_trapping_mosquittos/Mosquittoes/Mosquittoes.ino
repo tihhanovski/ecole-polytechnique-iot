@@ -1,6 +1,6 @@
 //See https://create.arduino.cc/projecthub/pibots555/how-to-connect-dht11-sensor-with-arduino-uno-f4d239
 
-// Code taken from example testing sketch for various DHT humidity/temperature sensors
+// Code partly taken from example testing sketch for various DHT humidity/temperature sensors
 // Written by ladyada, public domain
 
 // REQUIRES the following Arduino libraries:
@@ -10,7 +10,7 @@
 
 #include "DHT.h"
 
-#define DHTPIN 2     // Digital pin connected to the DHT sensor
+#define DHTPIN 2        // Digital pin connected to the DHT sensor
 #define DHTTYPE DHT11   // DHT 11
 #define MAX_DELAY 10000
 
@@ -34,7 +34,7 @@ void loop() {
   delay(2000);
   
 
-  // Reading temperature or humidity takes about 250 milliseconds!
+  // Reading temperature or humidity takes about 250 milliseconds
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
   float h = dht.readHumidity();
   // Read temperature as Celsius (the default)

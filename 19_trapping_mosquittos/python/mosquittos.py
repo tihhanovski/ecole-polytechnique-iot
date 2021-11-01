@@ -10,13 +10,13 @@ import serial
 ser = serial.Serial('/dev/cu.usbmodem14101')
 ser.flushInput()
 
-# The callback for when the client receives a CONNACK response from the server.
 
 #def on_connect(client, userdata, rc): #for old paho version
-def on_connect(client, obj, flags, rc):
-    print("Connected with result code "+str(rc))
+# The callback for when the client receives a CONNACK response from the server.
 # Subscribing in on_connect() means that if we lose the connection and
 # reconnect then subscriptions will be renewed.
+def on_connect(client, obj, flags, rc):
+    print("Connected with result code "+str(rc))
     client.subscribe("humidity/commands")
     
 #    client.publish("test", "Greetings from python", 0)
@@ -24,6 +24,8 @@ def on_connect(client, obj, flags, rc):
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
     print(msg.topic + " = " + str(msg.payload))
+
+
 
 client = mqtt.Client("testClient", False, None, mqtt.MQTTv31, "tcp")
 client.username_pw_set(username="ilja",password="inf471c")  #http://www.steves-internet-guide.com/client-connections-python-mqtt/
@@ -44,9 +46,10 @@ while True:
     client.loop(1);
     try:
         ser_bytes = ser.readline()
+        # TODO maybe process this readings somehow?
         client.publish("humidity/readings", ser_bytes);
-        print(".")
+        print(ser_bytes)
     except:
-        print("Error")
+        #print("Error")
         break
     
