@@ -19,6 +19,9 @@ volatile bool pressed = false;
 void setup() {
   pinMode(LED, OUTPUT);
   pinMode(SW, INPUT_PULLUP);
+
+  pressed = !digitalRead(SW);                         // To have proper value after reboot  
+
   Serial.begin(9600);
   while(!Serial);                                     // Wait for serial to start
   Serial.println("Started");
