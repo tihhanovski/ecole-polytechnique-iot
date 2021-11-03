@@ -25,7 +25,7 @@ inline void waitForSerialToFinish()
 void measure()
 {
   measuring = true;
-  //delay(70);         // Emulate working
+  delay(70);         // Emulate working
   humidity = 60;
   temperature = 20;
   measuring = false;
