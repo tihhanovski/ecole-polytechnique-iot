@@ -7,11 +7,11 @@
 #include "DHT.h"
 
 
-//#define WIFI_SSID "Telia-86EB42"
-//#define WIFI_PASS "EMPBNVJUMMHXRR"
+#define WIFI_SSID "Telia-86EB42"
+#define WIFI_PASS "EMPBNVJUMMHXRR"
 
-#define WIFI_SSID "Intellisoft_public"
-#define WIFI_PASS "Profit201704"
+//#define WIFI_SSID "Intellisoft_public"
+//#define WIFI_PASS "Profit201704"
 
 #define MQTT_SERVER "dev.intellisoft.ee"
 #define MQTT_CLIENT "ESP32Client"
