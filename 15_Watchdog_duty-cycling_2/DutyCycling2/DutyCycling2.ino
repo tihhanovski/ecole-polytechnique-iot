@@ -91,17 +91,10 @@ ISR(TIMER1_COMPA_vect)
 
 
 void loop() {
-  // put your main code here, to run repeatedly:
-
-  //Serial.print("before ");
-  //Serial.println(millis());
 
   violated = false;
   measure();
   output();
-
-  //Serial.print("after ");
-  //Serial.println(millis());
 
   if(violated)
     Serial.println("time constraint violated");
