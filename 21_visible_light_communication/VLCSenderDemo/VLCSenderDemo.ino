@@ -27,12 +27,12 @@ void setup() {
 bool pressed;
 
 void loop() {
+
   if(digitalRead(BTN) == LOW)
   {
     Serial.println("click");
-    sender.printSync("Hello, Arduino! "); // bug in receiver? last byte is always messed up
+    sender.printSync("Hello, Arduino! I try to send a little bit longer message to see when receiver will drift out of synchrony.");
     delay(2000);
   }
   delay(200);
-  //sender.loop();
 }

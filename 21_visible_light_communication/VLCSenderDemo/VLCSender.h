@@ -1,3 +1,5 @@
+#include "VLCStack.h"
+
 class VLCSender{
   public:
 
@@ -35,12 +37,15 @@ class VLCSender{
 
     sendPreamble();
 
-    for(uint8_t c : s)
-    {
+    for(uint8_t c : s) {
       sendSync(c);
       Serial.println("");
     }
-  
+
+    // Wait for one "tact" in order to output last bit of last byte
+    while(millis() < nextBitTime)
+      delay(5);
+
     sendIdle();
 
   }
@@ -54,30 +59,29 @@ class VLCSender{
 
   void send(uint8_t b)
   {
-    Serial.print("send('");
+    Serial.print("send '");
     Serial.print((char)b);
-    Serial.print("'): ");
+    Serial.print("' = ");
+    Serial.print(b, BIN);
+    Serial.print(" ");
     byteToSend = b;
     bitToSend = 0b10000000; //first we send highest bit
   }
   
-  inline bool stillSending()
-  {
+  inline bool stillSending() {
     return bitToSend;
   }
   
-  void loop()
-  {
+  void loop() {
     if(stillSending())
     {
       unsigned long t = millis();
-      if(t >= nextBitTime)
-      {
+      if(t >= nextBitTime) {
         nextBitTime = t + bitDelay;
         digitalWrite(pinToWrite, bitToSend & byteToSend);
         //Serial.print(t);
-        Serial.print("\t");
-        Serial.print((bitToSend & byteToSend) == 0 ? 0 : 1);
+        Serial.print("");
+        Serial.print(bitToSend & byteToSend ? 1 : 0);
         bitToSend = bitToSend >> 1;
       }
     }

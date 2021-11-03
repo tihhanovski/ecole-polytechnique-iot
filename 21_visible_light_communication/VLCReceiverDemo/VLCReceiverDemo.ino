@@ -4,6 +4,7 @@
 #define STATE_PREAMBLE 1
 #define STATE_DATA 2
 #define STATE_EOM 3 //end of message
+#define BIT_DELAY 100
 
 #define DEBUG 0
 
@@ -59,9 +60,9 @@ inline void setState(uint8_t s)
 {
   state = s;
   if(state == STATE_PREAMBLE)
-    bitDelay = 50;
+    bitDelay = BIT_DELAY / 2;
   else
-    bitDelay = 100;
+    bitDelay = BIT_DELAY;
   sampleDelay = bitDelay / 5;
 }
 
