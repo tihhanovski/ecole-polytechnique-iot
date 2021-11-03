@@ -9,6 +9,8 @@
 #include <avr/wdt.h>
 #include <avr/sleep.h>
 
+// We cant use other timers of Arduino because they will not work in SLEEP_MODE_PWR_DOWN
+
 /*
 WDTCSR
 0 - WDP0 : prescaler
@@ -92,6 +94,16 @@ void setup() {
 
   // We want to handle FALLING on pin 2
   // see https://tsibrov.blogspot.com/2019/06/arduino-interrupts-part2.html
+  // To enable external interrupts bits INT0 and INT1 of EIMSK are used (External Interrupt Mask Register)
+  // To control events that fire interrupt, bits 0 to 3 of EICRA are used (External Interrupt Control Register A)
+  /* ISC00 and ISC01 control INT0:
+   * ISC01  ISC00
+   * 0      0     - LOW;
+   * 0      1     - CHANGE (e.g. both FALLING and RISING);
+   * 1      0     - FALLING;
+   * 1      1     - RISING.
+   */
+
   EICRA &= ~(1 << ISC00);                             // Reset ISC00
   EICRA |= (1 << ISC01);                              // Set ISC01
   EIMSK |= (1 << INT0);                               // Enable INT0
@@ -121,6 +133,38 @@ void loop() {
 
     // Setup watchdog timer and disable pin 2 interrupt
     noInterrupts();                                     // Disable interrupts to avoid messing up the watchdog setup
+
+    /*
+    WDTCSR register bits
+      0 - WDP0 : prescaler
+      1 - WDP1 : prescaler
+      2 - WDP2 : prescaler
+      3 - WDE  : System reset on time-out
+      4 - WDCE : Change enable. +WDE=1 - 4 clock cycles
+      5 - WDP3 : prescaler
+      6 - WDIE : Watchdog interrupt enabled
+      7 - WDIF : Watchdog interrupt flag
+    
+      WDE WDIE  Mode                  Action
+      0   0     Stopped               -
+      0   1     Interrupt mode        Interrupt
+      1   0     System reset mode     Reset
+      1   1     Interrupt and reset   Interrupt, then reset
+      x   x     System reset mode     Reset
+    
+      WDP 3 2 1 0 msec
+          0 0 0 0 16
+          0 0 0 1 32
+          0 0 1 0 64
+          0 0 1 1 125
+          0 1 0 0 250
+          0 1 0 1 500
+          0 1 1 0 1000
+          0 1 1 1 2000
+          1 0 0 0 4000
+          1 0 0 1 8000
+    */
+    
     WDTCSR |= (1 << WDCE) | (1 << WDE);                 // Enter the setup mode
     WDTCSR = (0<<WDIF)|(0<<WDIE)|(0<<WDCE)|(1<<WDE)     // Set the watchdog to reset processor
       | (1<<WDP3 )|(0<<WDP2 )|(0<<WDP1)|(0<<WDP0);      // after four seconds
