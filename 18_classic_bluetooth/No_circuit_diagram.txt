@@ -1,0 +1,1 @@
+Only ESP32 Dev module used with internal LED to blink, so no circuit diagram.
