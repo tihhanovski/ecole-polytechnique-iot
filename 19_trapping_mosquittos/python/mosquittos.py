@@ -1,55 +1,45 @@
+# INF471C - Connected Objects and the Internet of Things (IoT)
+# MQTT: Trapping mosquitoes
+# Ilja Tihhanovski
+ 
+
 # Used examples from
 # https://makersportal.com/blog/2018/2/25/python-datalogger-reading-the-serial-output-from-arduino-to-analyze-data-using-pyserial
 # https://pythonforundergradengineers.com/python-arduino-potentiometer.html
 # http://www.steves-internet-guide.com/client-connections-python-mqtt/
+# https://mntolia.com/mqtt-python-with-paho-mqtt-client/
 
 import paho.mqtt.client as mqtt
 import time
 import serial
 
+# Open connection to Arduino using serial port (hardcoded)
 ser = serial.Serial('/dev/cu.usbmodem14101')
 ser.flushInput()
 
-
-#def on_connect(client, userdata, rc): #for old paho version
-# The callback for when the client receives a CONNACK response from the server.
-# Subscribing in on_connect() means that if we lose the connection and
-# reconnect then subscriptions will be renewed.
+# On connect we output message about connection result code and subscribe to our topic
 def on_connect(client, obj, flags, rc):
     print("Connected with result code "+str(rc))
     client.subscribe("humidity/commands")
     
-#    client.publish("test", "Greetings from python", 0)
-
 # The callback for when a PUBLISH message is received from the server.
+# Here we just output the message
 def on_message(client, userdata, msg):
-    print(msg.topic + " = " + str(msg.payload))
+    print("Message from broker: " + msg.topic + " = " + str(msg.payload))
 
-
-
-client = mqtt.Client("testClient", False, None, mqtt.MQTTv31, "tcp")
-client.username_pw_set(username="ilja",password="inf471c")  #http://www.steves-internet-guide.com/client-connections-python-mqtt/
-client.on_connect = on_connect
+client = mqtt.Client("humidityClient", True, None, mqtt.MQTTv31, "tcp")         # Instantiate a client with name 
+client.username_pw_set(username="ilja",password="inf471c")                      # Authenticate, see http://www.steves-internet-guide.com/client-connections-python-mqtt/
+client.on_connect = on_connect                                                  # Attach callbacks
 client.on_message = on_message
 
-client.connect("dev.intellisoft.ee", 1883, 60)
+client.connect("dev.intellisoft.ee", 1883, 60)                                  # Connect to broker
 
-# Blocking call that processes network traffic, dispatches callbacks and
-# handles reconnecting.
-# Other loop*() functions are available that give a threaded interface and a
-# manual interface.
-# client.loop_forever()
-
-# i = 0
-
+client.loop_start()                                                             # non-blocking - best of three available options
 while True:
-    client.loop(1);
     try:
-        ser_bytes = ser.readline()
-        # TODO maybe process this readings somehow?
-        client.publish("humidity/readings", ser_bytes);
-        print(ser_bytes)
+        ser_bytes = ser.readline()                                              # Read data sent from Arduino
+        client.publish("humidity/readings", ser_bytes);                         # Just publish data as, but we could process it here
+        print(ser_bytes)                                                        # Output data to console
     except:
-        #print("Error")
+        client.loop_stop()                                                      # On error (user presses Ctrl+C) stop the client
         break
-    
