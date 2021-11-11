@@ -1,17 +1,29 @@
-// https://randomnerdtutorials.com/esp32-mqtt-publish-subscribe-arduino-ide/
-// https://randomnerdtutorials.com/esp32-dht11-dht22-temperature-humidity-sensor-arduino-ide/
-//
+/*
+ * INF471C - Connected Objects and the Internet of Things (IoT)
+ * PubSubClient and ESP8266
+ * Ilja Tihhanovski
+ *  
+ * Examples used
+ * https://randomnerdtutorials.com/esp32-mqtt-publish-subscribe-arduino-ide/
+ * https://randomnerdtutorials.com/esp32-dht11-dht22-temperature-humidity-sensor-arduino-ide/
+ */
 
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include "DHT.h"
 
 
+//#define WIFI_SSID "Tartu Kolledž"
+//#define WIFI_PASS "Puie5tee"
+
 #define WIFI_SSID "Telia-86EB42"
 #define WIFI_PASS "EMPBNVJUMMHXRR"
 
 //#define WIFI_SSID "Intellisoft_public"
 //#define WIFI_PASS "Profit201704"
+
+//#define WIFI_SSID "POCO X3 Pro"
+//#define WIFI_PASS "nedzfzchvxb9bcy"
 
 #define MQTT_SERVER "dev.intellisoft.ee"
 #define MQTT_CLIENT "ESP32Client"
@@ -22,10 +34,13 @@
 #define DEF_TIME_BETWEEN_PUBS 2000 // in milliseconds
 #define MIN_TIME_BETWEEN_PUBS_SEC 1 // in seconds
 #define MAX_TIME_BETWEEN_PUBS_SEC 60 // in seconds
+// Limit maximum command from MQTT, that could be processed
+#define MAX_COMMAND_LENGTH 50
 
 #define DHTPIN 4        // Digital pin connected to the DHT sensor
 #define DHTTYPE DHT11   // DHT 11
 
+const char* commandTopic = "esp32/command";
 
 WiFiClient wifi;
 PubSubClient mqtt(wifi);
@@ -33,26 +48,55 @@ PubSubClient mqtt(wifi);
 DHT dht(DHTPIN, DHTTYPE);
 
 int cnt = 0;
+unsigned long nextPubMillis = 0;
 
 float humidity;
 float temperature;
 float heatIndex;
 
 bool requestBlink = false;
-unsigned long timeBetweenBubs = DEF_TIME_BETWEEN_PUBS;
+unsigned long timeBetweenPubs = DEF_TIME_BETWEEN_PUBS;
 
+// See https://techtutorialsx.com/2017/06/29/esp32-arduino-getting-started-with-wifi/
+/*
+String translateEncryptionType(wifi_auth_mode_t encryptionType) {
+ 
+  switch (encryptionType) {
+    case (WIFI_AUTH_OPEN):
+      return "Open";
+    case (WIFI_AUTH_WEP):
+      return "WEP";
+    case (WIFI_AUTH_WPA_PSK):
+      return "WPA_PSK";
+    case (WIFI_AUTH_WPA2_PSK):
+      return "WPA2_PSK";
+    case (WIFI_AUTH_WPA_WPA2_PSK):
+      return "WPA_WPA2_PSK";
+    case (WIFI_AUTH_WPA2_ENTERPRISE):
+      return "WPA2_ENTERPRISE";
+  }
+}
+*/
 
+void connectToWifi()
+{
+  /*int numberOfNetworks = WiFi.scanNetworks();
+  for (int i = 0; i < numberOfNetworks; i++) {
+ 
+    Serial.print(WiFi.SSID(i));
+    Serial.print(":\tRSSI: ");
+    Serial.print(WiFi.RSSI(i));
+ 
+    Serial.print(";\tMAC: ");
+    Serial.print(WiFi.BSSIDstr(i));
+ 
+    Serial.print("\tEnc: ");
+    Serial.println(translateEncryptionType(WiFi.encryptionType(i)));
+  }
+  Serial.println("-----------------------");
+  */
 
-void setup() {
-  pinMode(LED_PIN, OUTPUT);
-  // put your setup code here, to run once:
-  Serial.begin(115200);
-
-  dht.begin();  
-
-  //Connect to WiFi
-  delay(10);
-  // We start by connecting to a WiFi network
+  // Connect to a WiFi network
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(WIFI_SSID);
@@ -67,90 +111,95 @@ void setup() {
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());  
+  Serial.println(WiFi.localIP());
+  
+}
 
-  //MQTT stuff
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+  Serial.begin(115200);
+  while(!Serial) {}
 
+  // Connect sensor
+  dht.begin();  
+
+  connectToWifi();
+
+  //Setup MQTT, (re)connection will be initiated from loop
   mqtt.setServer(MQTT_SERVER, MQTT_PORT);
   mqtt.setCallback(callback);
 }
 
-const char* commandTopic = "esp32/command";
+const char* CMD_RESET_COUNTER = "resetCounter";
+const char* CMD_BLINK = "blink";
+const char* CMD_SETDELAY = "setDelay";
+const size_t CMD_SETDELAY_LENGTH = 8;
 
-void callback(char* topic, byte* message, unsigned int length) 
-{
+void callback(char* topic, byte* message, unsigned int length) {
+  size_t msgLength = (length > MAX_COMMAND_LENGTH) ? MAX_COMMAND_LENGTH : length;
+  char* msg = new char[msgLength + 1];
+  memcpy(msg, message, msgLength);
+  msg[msgLength] = 0;  //c_str final byte
+
   Serial.print("Message arrived on topic: '");
   Serial.print(topic);
   Serial.print("'. Message: '");
-  String messageTemp;
-  
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)message[i]);
-    messageTemp += (char)message[i];
-  }
+  Serial.print(msg);  
   Serial.println("'");
 
-  /*
-  Serial.println(strcmp(topic, commandTopic));
-  Serial.println(strlen(topic));
-  Serial.println(strlen(commandTopic));
-  Serial.println("--------");
-  */
-
-  if(strcmp(topic, commandTopic) == 0)
-  {
+  if(!strcmp(topic, commandTopic)) {
     Serial.println("process a command");
-    //messageTemp.trim();
-  
-    //TODO process input
-    if(messageTemp == "resetCounter")
-    {
+
+    //resetCounter sets cnt to 0
+    if(!strcmp(msg, CMD_RESET_COUNTER)) {
       Serial.println("resetCounter requested");
       cnt = 0;
     }
-  
-    if(messageTemp == "blink")
-    {
+
+    //blink makes controller to blink its built-in led
+    if(!strcmp(msg, CMD_BLINK)) {
       Serial.println("blink");
       requestBlink = true;
     }
 
-    if(messageTemp.substring(0, 8) == "setDelay")
-    {
+    // setDelay NN (where NN is integer) changes delay between publications
+    // delay given in seconds.
+    // If delay is out of min and max delay interval [MAX_TIME_BETWEEN_PUBS_SEC .. MAX_TIME_BETWEEN_PUBS_SEC]
+    // then controller will output corresponding message to Serial and blink the built-in led
+    if(!memcmp(msg, CMD_SETDELAY, CMD_SETDELAY_LENGTH)) {
       Serial.print("New delay requested ");
-      unsigned long newDelayRequested = messageTemp.substring(9).toInt();
-      if(newDelayRequested > MAX_TIME_BETWEEN_PUBS_SEC)
-      {
+
+      //unsigned long newDelayRequested = messageTemp.substring(9).toInt();
+      unsigned long newDelayRequested = atoi(msg + CMD_SETDELAY_LENGTH);
+      if(newDelayRequested > MAX_TIME_BETWEEN_PUBS_SEC) {
         Serial.print("delay ");
         Serial.print(newDelayRequested);
         Serial.print(" is too long, max ");
-        Serial.print(MAX_TIME_BETWEEN_PUBS_SEC);
+        Serial.println(MAX_TIME_BETWEEN_PUBS_SEC);
         requestBlink = true;
         return;
       }
   
-      if(newDelayRequested < MIN_TIME_BETWEEN_PUBS_SEC)
-      {
+      if(newDelayRequested < MIN_TIME_BETWEEN_PUBS_SEC) {
         Serial.print("delay ");
         Serial.print(newDelayRequested);
         Serial.print(" is too short, min ");
-        Serial.print(MIN_TIME_BETWEEN_PUBS_SEC);
+        Serial.println(MIN_TIME_BETWEEN_PUBS_SEC);
         requestBlink = true;
         return;
       }
   
-      timeBetweenBubs = newDelayRequested;
-      Serial.print(timeBetweenBubs);
+      timeBetweenPubs = newDelayRequested;
+      Serial.print(timeBetweenPubs);
       Serial.println(" OK");
     }
   }
-
+  
+  delete msg; //free memory
 }
 
-unsigned long nextPubMillis = 0;
 
-void reconnect() 
-{
+void reconnect() {
   // Loop until we're reconnected
   while (!mqtt.connected()) {
     Serial.print("Attempting MQTT connection...");
@@ -170,13 +219,12 @@ void reconnect()
 }
 
 void loop() {
-  if (!mqtt.connected()) {
+  
+  if (!mqtt.connected())
     reconnect();
-  }
   mqtt.loop();
 
-  if(requestBlink)
-  {
+  if(requestBlink) {
     for(uint8_t i = 0; i < 3; i++)
     {
       digitalWrite(LED_PIN, HIGH);
@@ -187,39 +235,33 @@ void loop() {
     requestBlink = false;
   }
 
-  if(millis() > nextPubMillis)
-  {
+  if(millis() > nextPubMillis) {
     cnt++;
 
-    float h = dht.readHumidity();
-    // Read temperature as Celsius (the default)
-    float t = dht.readTemperature();
+    float h = dht.readHumidity();        
+    float t = dht.readTemperature();    // Read temperature as Celsius (the default)
 
      // Check if any reads failed and exit early (to try again).
     if (isnan(h) || isnan(t)) {
       Serial.println("fail");
-    }
-    else
-    {
+    } else {
       // Compute heat index in Celsius (isFahreheit = false)
       float hic = dht.computeHeatIndex(t, h, false);
   
-      if((humidity != h) || (temperature != t) || (heatIndex != hic))
-      {
+      if((humidity != h) || (temperature != t) || (heatIndex != hic)) {
         humidity = h;
         temperature = t;
         heatIndex = hic;
-  
-        String msg = "t:" + String(temperature)
-          + "\th:" + String(humidity)
-          + "\ti:" + String(heatIndex)
-          + "\tc:" + String(cnt);
-      
-        Serial.print("Sending to mqtt ");
-        Serial.println(msg);
-        mqtt.publish("esp32/dht", msg.c_str());
+
+        char msg[50];
+        sprintf(msg, "t:%.2f\th:%.2f\ti:%.2f\tc:%d", temperature, humidity, heatIndex, cnt);
+        
+        Serial.print("Publish '");
+        Serial.print(msg);
+        Serial.println("'");
+        mqtt.publish("esp32/dht", msg);
       }
     }
-    nextPubMillis = millis() + timeBetweenBubs;
+    nextPubMillis = millis() + timeBetweenPubs;
   }
 }
