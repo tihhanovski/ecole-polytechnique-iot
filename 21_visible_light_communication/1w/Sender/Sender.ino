@@ -1,6 +1,8 @@
 #define LED 7
 #define BTN 6
 
+//#include <VLC.h>
+
 #define DELAY_SCALE 3
 #define DELAY_START DELAY_SCALE * 10
 #define DELAY_FINISH DELAY_SCALE * 15

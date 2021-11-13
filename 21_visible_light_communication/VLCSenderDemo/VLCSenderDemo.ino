@@ -1,27 +1,32 @@
+/* 
+ * INF471C - Connected Objects and the Internet of Things (IoT)
+ * Visible light communication with synchronization
+ * Ilja Tihhanovski
+ *
+ * Sender sketch
+ */
+
 #define LED 7
 #define BTN 6
 
 #include "VLCSender.h"
 
-#define SENDER_PERIOD 100
-
-uint8_t codeSent = 0b00000000; //0b10110111
+#define SENDER_PERIOD 5000  //In microseconds
+#define PACKET_SIZE 5       //Packet size (bytes). With packet longer than 10 bytes will drift out of synchrony
 
 VLCSender sender;
 
 void setup() {
 
+  // Setup pin, start serial
   pinMode(BTN, INPUT_PULLUP);
-
-  // put your setup code here, to run once:
   Serial.begin(9600);
   while(!Serial);
 
-  sender.begin(LED, SENDER_PERIOD);
+  // Initialize sender with LED, bit duration in usec and packet size
+  sender.begin(LED, SENDER_PERIOD, PACKET_SIZE);
 
   Serial.println("Press the button to send");
-  Serial.flush();
-  //sender.send(codeSent);
 }
 
 bool pressed;
@@ -30,8 +35,8 @@ void loop() {
 
   if(digitalRead(BTN) == LOW)
   {
-    Serial.println("click");
-    sender.printSync("Hello, Arduino! I try to send a little bit longer message to see when receiver will drift out of synchrony.");
+    // If button is pressed, transmit
+    sender.printSync("Hello, Arduino!!!");
     delay(2000);
   }
   delay(200);

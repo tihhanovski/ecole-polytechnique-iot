@@ -1,16 +1,25 @@
-#define LDR 2
+/* 
+ * INF471C - Connected Objects and the Internet of Things (IoT)
+ * Visible light communication
+ * Ilja Tihhanovski
+ *
+ * Receiver with synchronization
+ */
 
+
+#define LDR 2                   // Input pin
+#define BIT_DELAY 5000          // In microseconds
+
+// Receiver states:
 #define STATE_IDLE 0
 #define STATE_PREAMBLE 1
 #define STATE_DATA 2
-#define STATE_EOM 3 //end of message
-#define BIT_DELAY 100
 
 #define DEBUG 0
 
-#include <avr/sleep.h>
+#include <avr/sleep.h> 
 
-volatile bool lastBit;
+volatile bool lastBit;      // Last bit receiver got
 bool justAwaken = true;
 
 // INT0 external interrupt - on PIN2
@@ -20,12 +29,12 @@ ISR(INT0_vect)
 }
 
 void setup() {
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-  // put your setup code here, to run once:
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);        // Setup sleep mode
   pinMode(LDR, INPUT);
 
   Serial.begin(9600);
 
+  // Setup interrupt
   noInterrupts();
 
   //We want to handle both FALLING AND RISING edges
@@ -36,26 +45,27 @@ void setup() {
 
   interrupts();
 
+  // Go to sleep
   sleep_enable();
   sleep_cpu();
 }
 
-int c = 0;  //counter to neatly feed the line
+unsigned long nextBitTime;        // Time to start next bit
+unsigned long nextSampleTime;     // Time to measure next sample (we take 5 samples per bit)
+unsigned long startTime;          // Message start time
 
-unsigned long nextBitTime;
-unsigned long nextSampleTime;
-unsigned long startTime;
+unsigned long bitDelay;           // Bit duration in microseconds
+unsigned long sampleDelay;        // Time between samples in microseconds
+uint8_t state;                    // Current receiver state
+uint8_t currentByte;              // Byte buffer
+uint8_t currentBitNo;             // Currently received bit number 
 
-unsigned long bitDelay;
-unsigned long sampleDelay;
-uint8_t state;
-uint8_t currentByte;
-uint8_t currentBitNo;
+String buffer = "";               // Message (packet) buffer
 
-String buffer = "";
+uint8_t sample;                   // Samples sum
 
-uint8_t sample;
-
+// Sets current state
+// For preamble state we use 2x shorter delays (preamble is 10101010 sent in double speed)
 inline void setState(uint8_t s)
 {
   state = s;
@@ -63,52 +73,52 @@ inline void setState(uint8_t s)
     bitDelay = BIT_DELAY / 2;
   else
     bitDelay = BIT_DELAY;
-  sampleDelay = bitDelay / 5;
+  sampleDelay = bitDelay / 5;             // Five samples per bit
 }
 
 void loop() {
 
-  unsigned long t = millis();
+  unsigned long t = micros();
 
-  if(justAwaken)
+  if(justAwaken)                          // Something is incoming (CHANGE on input pin wake microcontroller up)
   {
     #if DEBUG > 0
       Serial.println("Wake up!");
     #endif
-    setState(STATE_PREAMBLE);
+    setState(STATE_PREAMBLE);             // Expecting preamble
     justAwaken = false;
-    startTime = t;
+    startTime = t;                        // Save the message start time
 
-    nextSampleTime = t;
-    nextBitTime = t + bitDelay;
+    nextSampleTime = t;                   // Prepare to take first sample
+    nextBitTime = t + bitDelay;           // Schedule the next bit start
     
-    currentBitNo = 0;
+    currentBitNo = 0;                     // Initialize buffers
     currentByte = 0;
     buffer = "";
   }
 
-  if(t >= nextSampleTime)
+  if(t >= nextSampleTime)                 // Next sample must be taken
   {
-    sample = sample + lastBit;
-    nextSampleTime = t + sampleDelay;
+    sample = sample + lastBit;            // Accumulate samples
+    nextSampleTime = t + sampleDelay;     // Schedule next sample time
   }
 
-  if(t >= nextBitTime)
+  if(t >= nextBitTime)                    // Its time to move on to the next bit, so we must save the last
   {
     // Convert sample to bit
     // Put bit into current byte
     uint8_t bit = (sample > 2) ? 1 : 0;
-    sample = 0;
+    sample = 0;                           // Reset the samples accumulator
 
     #if DEBUG > 0
       Serial.print(bit);
     #endif
 
-    currentByte = currentByte << 1;
-    currentByte = currentByte | bit;
-    currentBitNo++;
+    currentByte = currentByte << 1;       // Shift the byte buffer
+    currentByte = currentByte | bit;      // Put previous bit into byte
+    currentBitNo++;                       // Increase bit counter
 
-    if(currentBitNo == 8)
+    if(currentBitNo == 8)                 // If all 8 bits is read
     {
       // Byte is complete.
       #if DEBUG > 0
@@ -122,17 +132,20 @@ void loop() {
 
       if(state == STATE_DATA)
       {
+        // If state is DATA and we receive 0, then we know that the message/packet is over
+        // Output the message/packet
         if(currentByte == 0)
         {
-          Serial.print("\nYou got a message: '");
-          Serial.print(buffer);
-          Serial.print("' in ");
+          Serial.print("\t// in ");
           Serial.print(t - startTime);
-          Serial.println(" msec.");
+          Serial.print(" usec at speed ");
+          Serial.print((double)(buffer.length()) / (t - startTime) * 1000000 );
+          Serial.println(" bps");
         }
         else
         {
-          //Add current completed byte to the buffer
+          // We received data byte
+          // Add current completed byte to the buffer
           buffer += (char)currentByte;
           Serial.print((char)currentByte);
         }
@@ -140,6 +153,7 @@ void loop() {
 
       if((currentByte == 0b10101010) && (state == STATE_PREAMBLE))
       {
+        // Currect preamble received, now expect data bytes 
         #if DEBUG > 0
           Serial.println("Correct preamble detected");
         #endif
@@ -151,19 +165,19 @@ void loop() {
         #if DEBUG > 0
           Serial.println("Idle detected");
         #endif
-        setState(STATE_IDLE);
+        setState(STATE_IDLE);                     // Switch to the idle state
 
-        while ((UCSR0A & _BV (TXC0)) == 0) {}
+        while ((UCSR0A & _BV (TXC0)) == 0) {}     // Wait for serial to finish
         justAwaken = true;
-        sleep_enable();
+        sleep_enable();                           // Go to sleep
         sleep_cpu();
       }
 
-
+      // Reset the byte buffer after each byte
       currentBitNo = 0;
       currentByte = 0;
     }
 
-    nextBitTime = t + bitDelay;
+    nextBitTime = t + bitDelay;     // Schedule the next bit time
   }
 }
